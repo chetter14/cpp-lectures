@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iterator>
 #include <utility>
+#include <vector>
 
 namespace {
     template<typename T> class container {
