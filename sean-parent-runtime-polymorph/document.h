@@ -5,17 +5,17 @@
 #include <iostream>
 #include <memory>
 
-namespace Doc {
+template<typename T>
+void draw(const T& x, std::ostream& os) {
+    os << x << std::endl;
+}
 
-    template<typename T>
-    void draw(const T& x, std::ostream& os) {
-        os << x << std::endl;
-    }
+namespace Doc {
 
     class Object {
     public:
         template<typename T>
-        Object(T val) : self_(std::make_shared<DrawableObject<T>>(std::move(val))) { }
+        Object(T val) : self_(std::make_unique<DrawableObject<T>>(std::move(val))) { }
 
         void dump(std::ostream& os) const {
             self_->draw_(os);
@@ -30,7 +30,7 @@ namespace Doc {
         template<typename T>
         struct DrawableObject final : public Drawable { 
         public:
-            DrawableObject(T data) : data_(std::move(data)) { }
+            DrawableObject(T&& data) : data_(std::move(data)) { }
 
             void draw_(std::ostream& os) const override {
                 draw(data_, os);
@@ -40,20 +40,16 @@ namespace Doc {
             T data_;
         };
 
-        std::shared_ptr<Drawable> self_;
+        std::unique_ptr<Drawable> self_;
     };
 
-    void draw(const Object& obj, std::ostream& os) {
-        obj.dump(os);
-    }
-
     using Document = std::vector<Object>;
-
-    void draw(const Document& doc, std::ostream& os) {
-        os << "<document>" << std::endl;
-        for (const auto &val : doc) draw(val, os);
-        os << "</document>" << std::endl;
-    }
 }
+
+template<>
+void draw<Doc::Object>(const Doc::Object& obj, std::ostream& os);
+
+template<>
+void draw<Doc::Document>(const Doc::Document& doc, std::ostream& os);
 
 #endif // DOCUMENT_H
