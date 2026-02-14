@@ -69,53 +69,105 @@ namespace {
         std::cout << "Called for random access iterator" << std::endl;
     }
 
-    /* Used for pointer dereference operator in iterator class */
-    template<typename Reference>
-    struct arrow_proxy {
-        Reference ref;
-        Reference *operator->() { return &ref; }
-    };
-
     template<typename KeyIt, typename ValueIt>
     class zip_iterator_t {
     public:
         using KeyType = typename std::iterator_traits<KeyIt>::value_type;
         using ValueType = typename std::iterator_traits<ValueIt>::value_type;
-        
+        using KeyDiff = typename std::iterator_traits<KeyIt>::difference_type;
+        using ValueDiff = typename std::iterator_traits<ValueIt>::difference_type;
         using KeyRef = typename std::iterator_traits<KeyIt>::reference;
         using ValueRef = typename std::iterator_traits<ValueIt>::reference;
+        using KeyCat = typename std::iterator_traits<KeyIt>::iterator_category;
+        using ValueCat = typename std::iterator_traits<ValueIt>::iterator_category;
 
+        static_assert(std::is_base_of_v<std::forward_iterator_tag, KeyCat>);
+        static_assert(std::is_base_of_v<std::forward_iterator_tag, ValueCat>);
+
+    private:
+        /* Used for pointer dereference operator */
+        template<typename Reference>
+        struct arrow_proxy {
+            Reference ref;
+            Reference *operator->() { return &ref; }
+        };
+
+    public:
+        using iterator_category = std::forward_iterator_tag;
         using value_type = std::pair<KeyType, ValueType>;
         using reference = std::pair<KeyRef, ValueRef>;
+        using difference_type = std::pair<KeyDiff, ValueDiff>;
         using pointer = arrow_proxy<reference>;
 
     public:
         zip_iterator_t(KeyIt kit, ValueIt vit) : kit_(kit), vit_(vit) { }
-        zip_iterator_t &operator++() { kit_++; vit_++; return *this; }
+
+        zip_iterator_t &operator++() { 
+            kit_++; 
+            vit_++; 
+            return *this; 
+        }
+
+        zip_iterator_t &operator++(int) { 
+            auto temp{*this};
+            operator++();
+            return temp;
+        }
 
         reference operator*() const { return {*kit_, *vit_}; }
         pointer operator->() const { return pointer{{*kit_, *vit_}}; }
+
+        bool equals(const zip_iterator_t &rhs) const {
+            return (kit_ == rhs.kit_) && (vit_ == rhs.vit_);
+        }
 
     private:
         KeyIt kit_;
         ValueIt vit_;
     };
 
+    template<typename KeyIt, typename ValueIt>
+    bool operator==(const zip_iterator_t<KeyIt, ValueIt> &lhs, const zip_iterator_t<KeyIt, ValueIt> &rhs) {
+        return lhs.equals(rhs);
+    }
+
+    template<typename KeyIt, typename ValueIt>
+    bool operator!=(const zip_iterator_t<KeyIt, ValueIt> &lhs, const zip_iterator_t<KeyIt, ValueIt> &rhs) {
+        return !lhs.equals(rhs);
+    }
+
+    template<typename KeyIt, typename ValueIt>
+    auto make_zip_iterator(KeyIt kit, ValueIt vit) {
+        return zip_iterator_t{kit, vit};
+    }
+
     template<typename Keys, typename Values>
     class zip_range_t {
         Keys& K_;
         Values& V_;
+        using KeyIter = typename std::remove_reference_t<Keys>::iterator;
+        using ValueIter = typename std::remove_reference_t<Values>::iterator;
 
     public:
-        auto begin() {
+        zip_range_t(Keys& K, Values& V) : K_(K), V_(V) { }
+
+        zip_iterator_t<KeyIter, ValueIter> begin() {
             return make_zip_iterator(std::begin(K_), std::begin(V_));
         }
-
+        zip_iterator_t<KeyIter, ValueIter> end() {
+            return make_zip_iterator(std::end(K_), std::end(V_));
+        }
     };
 
     template<typename Keys, typename Values>
     auto make_zip_range(Keys& K, Values& V) {
         return zip_range_t<Keys, Values>(K, V);
+    }
+
+    /* Hinnant trick */
+    template<typename Container, typename ConstIter>
+    typename Container::iterator remove_constness(Container &cont, ConstIter citer) {
+        return cont.erase(citer, citer);
     }
 }
 
@@ -142,11 +194,45 @@ int main() {
 
     {
         std::vector<int> keys { 1, 2, 3, 4, 5 };
-        std::vector<double> values { 1.0, 2.0, 3.0, 4.0, 5.0 };
+        std::vector<double> values { 1.2, 2.3, 3.4, 4.5, 5.6 };
 
         for (auto &&both : make_zip_range(keys, values)) {
-            ;
+            std::cout << both.first << " " << both.second << std::endl;
         }
+    }
+
+    {
+        std::vector<int> v{ 1, 2, 3, 4, 5 };
+        auto cit = v.cbegin();
+        auto it = remove_constness(v, cit);
+        // *cit = 2;    // compile error
+        *it = 20;
+
+        for (auto x : v) std::cout << x << " ";
+        std::cout << std::endl;
+    }
+
+    {
+        std::vector<int> v{ 10, 20, 30, 40, 50 };
+        auto ri = v.rbegin() + 4;
+        auto it = ri.base();
+        std::cout << *ri << " " << *it << std::endl; /* 10 20 */
+    }
+
+    {
+        std::vector<double> vect{ 3.0, 5.2, 9.1 };
+        auto it = vect.begin() + 2;
+        auto ins_it = std::inserter(vect, vect.begin() + 2);
+
+        *ins_it = 15.1;
+        ++ins_it;
+        *ins_it = 11.8;
+
+        for (auto x : vect) std::cout << x << " ";
+        std::cout << std::endl;
+
+        /* 9.1 (even though now, technically, it's the last element in vector)*/
+        std::cout << *it << std::endl;
     }
 
     return 0;
