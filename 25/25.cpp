@@ -169,7 +169,182 @@ int main() {
         std::cout << std::endl;
     }
     print_delim();
+    {
+        std::vector<int> a { 1, 2, 4, 8, 16 };
+        std::vector<int> b { 1, 3, 6, 9, 12 };
+        std::vector<int> c;
 
+        std::ostream_iterator<int> osit(std::cout, " ");
+
+        auto transform_op = [](auto &&x, auto &&y) { return x * y; };
+        std::transform(a.begin(), a.end(), b.begin(), std::back_inserter(c), transform_op);
+        std::copy(c.begin(), c.end(), osit);
+        std::cout << std::endl;
+
+        auto reduce_op = [](auto &&x, auto &&y) { return x + y; };
+        auto x = std::transform_reduce(a.begin(), a.end(), b.begin(), 0, reduce_op, transform_op);
+        std::cout << "Reduced to: " << x << std::endl;
+
+        auto inner_prod = std::inner_product(a.begin(), a.end(), b.begin(), 0);
+        std::cout << "Inner product is " << inner_prod << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v;
+        auto foo = [](auto &&x) { return x; };
+        if (std::all_of(v.begin(), v.end(), foo)) {
+            std::cout << "All of" << std::endl;
+        }
+        if (std::any_of(v.begin(), v.end(), foo)) {
+            std::cout << "Any of" << std::endl;
+        }
+        if (std::none_of(v.begin(), v.end(), foo)) {
+            std::cout << "None of" << std::endl;
+        }
+    }
+    print_delim();
+    {
+        std::vector<int> v { 5, 8, 13, 6, 13, 0, 2, 13 };
+        
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        /* Erase-remove idiom */
+        v.erase(std::remove(v.begin(), v.end(), 13), v.end());
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v { 5, 8, 13, 5, 13, 8, 5, 13 };
+        
+        std::sort(v.begin(), v.end());
+
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;        
+
+        v.erase(std::unique(v.begin(), v.end()), v.end());
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v(10);
+        std::iota(v.begin(), v.end(), 1);
+
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;    
+
+        /* Move [3, 6) range right before 8 */
+        auto f = std::find(v.begin(), v.end(), 3);
+        auto l = std::next(f, 3);
+        auto p = std::find(v.begin(), v.end(), 8);
+        std::rotate(f, l, p);
+
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        /* Reset */
+        print_delim();
+        std::iota(v.begin(), v.end(), 1);
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        /* Move [4, 7) range on a place of 2 */
+        f = std::find(v.begin(), v.end(), 4);
+        l = std::next(f, 3);
+        p = std::find(v.begin(), v.end(), 2);
+        std::rotate(p, f, l);
+
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v { 1, 2, 3, 4, 100, 9, 8, 7, 6 };
+        
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        /* Gather equivalent below: */
+        auto m = std::find(v.begin(), v.end(), 100);
+
+        std::stable_partition(v.begin(), m, [](int val) { return val % 2 != 0; } );
+        std::stable_partition(m + 1, v.end(), [](int val) { return val % 2 == 0; });
+
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v {5, 2, 13, 7, 10, 1, 4, 6 };
+
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        std::sort(v.begin(), v.end());
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v {5, 2, 13, 7, 10, 1, 4, 6 };
+
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        std::partial_sort(v.begin(), v.begin() + 4, v.end());
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v {5, 2, 13, 7, 10, 1, 4, 6 };
+
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        std::nth_element(v.begin(), v.begin() + 4, v.end());
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+    }
+    print_delim();
+    {
+        std::vector<int> v {5, 2, 10, 13, 7, 10, 1, 4, 6 };
+
+        std::ostream_iterator<int> osit(std::cout, " ");
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        std::sort(v.begin(), v.end());
+        std::copy(v.begin(), v.end(), osit);
+        std::cout << std::endl;
+
+        if (std::binary_search(v.begin(), v.end(), 10)) {
+            std::cout << "Found 10" << std::endl;
+        }
+
+        std::cout << *std::lower_bound(v.begin(), v.end(), 3) << std::endl;
+        std::cout << *std::upper_bound(v.begin(), v.end(), 3) << std::endl;
+
+        std::cout << *std::lower_bound(v.begin(), v.end(), 7) << std::endl;
+        std::cout << *std::upper_bound(v.begin(), v.end(), 7) << std::endl;
+
+        std::cout << *std::lower_bound(v.begin(), v.end(), 10) << std::endl;
+        std::cout << *std::upper_bound(v.begin(), v.end(), 10) << std::endl;
+
+        auto [itb, ite] = std::equal_range(v.begin(), v.end(), 10);
+        std::copy(itb, ite, osit);
+        std::cout << std::endl;
+    }
+    print_delim();
     std::cout << "Passed!" << std::endl;
     return 0;
 }
