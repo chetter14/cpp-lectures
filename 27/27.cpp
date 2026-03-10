@@ -1,8 +1,11 @@
 #include <climits>
 #include <initializer_list>
+#include <ios>
 #include <iostream>
 #include <cassert>
 #include <array>
+#include <type_traits>
+#include <utility>
 
 namespace {
     void print_delim() {
@@ -101,6 +104,60 @@ namespace {
 
         return res;
     }
+
+    template<typename T, T... Ints>
+    class integer_sequence;
+
+    template<std::size_t... Ints>
+    using index_sequence = integer_sequence<std::size_t, Ints...>;
+
+    template<typename T, std::size_t N, std::size_t... Ns>
+    constexpr std::array<T, N> 
+    make_array_impl(std::initializer_list<T> il, std::index_sequence<Ns...>) {
+        return std::array<T, N>{ *(il.begin() + Ns)... };
+    }
+
+    template<typename T, std::size_t N>
+    constexpr std::array<T, N> make_array(std::initializer_list<T> il) {
+        return make_array_impl<T, N>(il, std::make_index_sequence<N>());
+    }
+
+    template<typename T, typename U, typename = void>
+    struct is_equality_comparable : std::false_type {};
+
+    template<typename T, typename U>
+    struct is_equality_comparable<T, U,
+        std::void_t<decltype(std::declval<T>() == std::declval<U>())>>
+        : std::true_type {};
+
+    template<typename T, typename U>
+    constexpr bool is_equality_comparable_v = is_equality_comparable<T, U>::value;
+
+    // template<typename T, typename U,
+    //     typename = std::enable_if_t<is_equality_comparable_v<T, U>>>
+    // bool check_eq(T &&lhs, U &&rhs) { return lhs == rhs; }
+
+    template<typename T, typename U>
+        requires is_equality_comparable_v<T, U>
+    bool check_eq(T &&lhs, U &&rhs) { return lhs == rhs; }
+    
+    // Compile error below because of redefinition of default template parameter in the 2nd function !
+    
+    // template<typename T, typename = std::enable_if_t<(sizeof(T) > 4), int>>
+    // void foo(T x) { /* Some logic here */ ; }
+
+    // template<typename T, typename = std::enable_if_t<(sizeof(T) <= 4), int>>
+    // void foo(T x) { /* Another logic here */ ; }
+
+    // In C++20 compiles fine:
+
+    template<typename T>
+        requires (sizeof(T) > 4)
+    void foo(T x) { std::cout << "It's larger than 4 bytes" << std::endl; }
+
+    template<typename T>
+        requires (sizeof(T) <= 4)
+    void foo(T x) { std::cout << "It's equal to or less than 4 bytes" << std::endl; }
 }
 
 int main() {
@@ -161,6 +218,28 @@ int main() {
         std::cout << "binary to ull conversion occurred at compile time!" << std::endl;
     }
     print_delim();
+    {
+        constexpr std::array<int, 5> arr { 1, 2, 3, 4, 5 };
+        static_assert(arr[1] == 2 && arr[4] == 5);
+
+        std::cout << "array init occurred at compile time!" << std::endl;
+    }
+    print_delim();
+    {
+        std::cout << std::boolalpha;
+        std::cout << is_equality_comparable_v<std::string, int> << std::endl;
+        std::cout << is_equality_comparable_v<std::string, std::string> << std::endl;
+        
+        // std::cout << check_eq(std::string("hey"), 2) << std::endl;  // compile error!
+        std::cout << check_eq(2.0, 5.0) << std::endl;
+    }
+    print_delim();
+    {
+        foo(3);
+        foo(8.2);
+        foo(2.3f);
+        foo(std::string("ehy"));
+    }
     std::cout << "Passed!" << std::endl;
     return 0;
 }
